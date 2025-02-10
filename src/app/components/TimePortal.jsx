@@ -17,8 +17,8 @@ export default function TimePortal() {
   const [seenIds, setSeenIds] = useState(new Set());
 
   const { ref, inView } = useInView({
-    threshold: 0,
-    rootMargin: "0px",
+    threshold: 0.2,
+    rootMargin: "50px",
     triggerOnce: false,
   });
 
