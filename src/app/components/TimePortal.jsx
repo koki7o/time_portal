@@ -22,6 +22,18 @@ export default function TimePortal() {
     triggerOnce: false,
   });
 
+  // Disable background scrolling when filters are open.
+  useEffect(() => {
+    if (showFilters) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showFilters]);
+
   const getFilterDescription = () => {
     if (selectedMode) {
       switch (selectedMode) {
@@ -115,7 +127,7 @@ export default function TimePortal() {
 
       {/* Filters Panel */}
       <div
-        className={`fixed top-0 right-0 left-0 z-40 bg-black/95 backdrop-blur-sm transition-all duration-300 ${
+        className={`fixed top-0 right-0 left-0 z-40 h-screen overflow-y-auto bg-black/95 backdrop-blur-sm transition-all duration-300 ${
           showFilters ? "translate-y-0" : "-translate-y-full"
         }`}
       >
@@ -132,7 +144,8 @@ export default function TimePortal() {
             </p>
             <p className="mb-4">{getFilterDescription()}.</p>
             <p className="mb-4">
-              Brought to you with ❤️ by Kyle C <a href="https://linkin.bio/thedevfounder/">@devfounder</a>
+              Brought to you with ❤️ by Kyle C{" "}
+              <a href="https://linkin.bio/thedevfounder/">@devfounder</a>
             </p>
             <div className="flex items-center gap-2 text-sm">
               <Archive className="w-4 h-4" />
