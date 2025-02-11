@@ -118,10 +118,12 @@ export default function TimePortal() {
       {/* Fixed Header */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-black to-transparent pb-16">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-2 text-white">
-            <Clock className="w-6 h-6" />
-            <span className="text-xl font-bold">TimePortal</span>
-          </div>
+          <a href="/">
+            <div className="flex items-center gap-2 text-white">
+              <Clock className="w-6 h-6" />
+              <span className="text-xl font-bold">TimePortal</span>
+            </div>
+          </a>
 
           <button
             onClick={() => setShowFilters(!showFilters)}
