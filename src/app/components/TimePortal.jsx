@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useInView } from "react-intersection-observer";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { fetchArchiveItems, COLLECTIONS, YEARS } from "../../lib/archive";
 import ArtifactCard from "./ArtifactCard";
 import { ChevronDown, Clock, Info, Archive } from "lucide-react";
@@ -16,13 +15,70 @@ export default function TimePortal() {
   const [showFilters, setShowFilters] = useState(false);
   const [seenIds, setSeenIds] = useState(new Set());
 
-  const { ref, inView } = useInView({
-    threshold: 0.2,
-    rootMargin: "50px",
-    triggerOnce: false,
-  });
+  // Ref for the observer's target element
+  const observerTarget = useRef(null);
 
-  // Disable background scrolling when filters are open.
+  // Function to load more artifacts
+  const loadMoreArtifacts = async () => {
+    if (loading) return;
+    try {
+      setLoading(true);
+      const { items } = await fetchArchiveItems(
+        selectedYear,
+        // When a mode is selected (other than default) ignore the basic collection.
+        selectedMode === "" ? selectedCollection : "",
+        selectedMode,
+        selectedTheme
+      );
+
+      if (items && items.length > 0) {
+        // Avoid duplicates
+        if (!seenIds.has(items[0].identifier)) {
+          setArtifacts((prev) => [...prev, items[0]]);
+          setSeenIds((prev) => new Set([...prev, items[0].identifier]));
+        } else {
+          // If duplicate, try loading another artifact.
+          loadMoreArtifacts();
+        }
+      }
+    } catch (error) {
+      console.error("Error loading artifacts:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Intersection Observer callback – triggers loadMoreArtifacts when the sentinel is visible
+  const handleObserver = useCallback(
+    (entries) => {
+      const [target] = entries;
+      if (target.isIntersecting && !loading) {
+        loadMoreArtifacts();
+      }
+    },
+    [loading] // loadMoreArtifacts is defined outside; this callback re-runs when loading changes.
+  );
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(handleObserver, {
+      threshold: 0.1,
+      rootMargin: "100px",
+    });
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+    return () => observer.disconnect();
+  }, [handleObserver]);
+
+  // Reload artifacts when filters change.
+  useEffect(() => {
+    setArtifacts([]);
+    setSeenIds(new Set());
+    loadMoreArtifacts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedYear, selectedCollection, selectedMode, selectedTheme]);
+
+  // Disable background scrolling when the filter panel is open.
   useEffect(() => {
     if (showFilters) {
       document.body.style.overflow = "hidden";
@@ -56,50 +112,6 @@ export default function TimePortal() {
       return `Random ${COLLECTIONS[selectedCollection]} from ${selectedYear}`;
     }
   };
-
-  const loadMoreArtifacts = async () => {
-    if (loading) return;
-
-    try {
-      setLoading(true);
-      const { items } = await fetchArchiveItems(
-        selectedYear,
-        // If a mode is selected (other than default) we ignore the basic collection.
-        selectedMode === "" ? selectedCollection : "",
-        selectedMode,
-        selectedTheme
-      );
-
-      if (items && items.length > 0) {
-        // Avoid duplicates
-        if (!seenIds.has(items[0].identifier)) {
-          setArtifacts((prev) => [...prev, items[0]]);
-          setSeenIds((prev) => new Set([...prev, items[0].identifier]));
-        } else {
-          setLoading(false);
-          loadMoreArtifacts();
-        }
-      }
-    } catch (error) {
-      console.error("Error loading artifacts:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Reload artifacts when any filter changes.
-  useEffect(() => {
-    setArtifacts([]);
-    setSeenIds(new Set());
-    loadMoreArtifacts();
-  }, [selectedYear, selectedCollection, selectedMode, selectedTheme]);
-
-  // Load more when the scroll trigger is in view.
-  useEffect(() => {
-    if (inView && !loading) {
-      loadMoreArtifacts();
-    }
-  }, [inView]);
 
   return (
     <div className="relative">
@@ -149,9 +161,7 @@ export default function TimePortal() {
             </p>
             <div className="flex items-center gap-2 text-sm">
               <Archive className="w-4 h-4" />
-              <span>
-                Powered by <a href="https://archive.org">Internet Archive</a>
-              </span>
+              <span>Powered by Internet Archive</span>
             </div>
           </div>
 
@@ -245,7 +255,7 @@ export default function TimePortal() {
             <ArtifactCard
               item={{
                 ...item,
-                // Fall back to the Archive image service if no thumb is provided.
+                // Fallback to Archive's image service if no thumbnail exists.
                 thumbs:
                   item.thumbs && item.thumbs.length > 0
                     ? item.thumbs
@@ -255,25 +265,15 @@ export default function TimePortal() {
           </div>
         ))}
 
-        {/* Loading Trigger */}
-        <div
-          ref={ref}
-          className="h-screen w-full flex items-center justify-center bg-black"
-        >
-          {loading ? (
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-white/20 border-t-white" />
-          ) : (
-            <div className="text-white/50">Scroll for more</div>
-          )}
-        </div>
-      </div>
+        {/* Sentinel element for the IntersectionObserver */}
+        <div ref={observerTarget} className="h-10 -mt-1" />
 
-      {/* Empty State */}
-      {!loading && artifacts.length === 0 && (
-        <div className="h-screen w-full flex items-center justify-center bg-black text-white">
-          No items found with visual content
-        </div>
-      )}
+        {loading && (
+          <div className="h-screen w-full flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-white/20 border-t-white" />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

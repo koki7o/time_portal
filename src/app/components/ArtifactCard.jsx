@@ -94,7 +94,7 @@ export default function ArtifactCard({ item }) {
           {/* Title and Description */}
           <div>
             <h1 className="text-3xl font-bold mb-2 leading-tight">
-              {item.title || "Untitled"}
+              {item.title.slice(0, 200)  || "Untitled"}
             </h1>
             {item.description && (
               <p className="text-base opacity-90 max-w-2xl">
